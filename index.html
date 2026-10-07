@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Table Input</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #999; padding: 6px; }
+        input { width: 140px; }
+        button { margin-top: 12px; padding: 6px 18px; }
+    </style>
+</head>
+<body>
+    <table id="table"></table>
+    <button id="go">Go</button>
+    <span id="status"></span>
+
+    <script>
+        async function main() {
+            const data = await fetch("/data").then(response => response.json());
+            const input_values = data.input_values;
+            const output_columns = data.output_columns;
+            const initial_output_values = data.initial_output_values;
+            const input_columns = Object.keys(input_values);
+            const row_count = input_values[input_columns[0]].length;
+            const table = document.getElementById("table");
+
+            const header = document.createElement("tr");
+
+            for (const column of [...input_columns, ...output_columns]) {
+                const th = document.createElement("th");
+                th.textContent = column;
+                header.appendChild(th);
+            }
+
+            table.appendChild(header);
+
+            const body = document.createElement("tbody");
+
+            for (let row_number = 0; row_number < row_count; row_number++) {
+                const row = document.createElement("tr");
+
+                for (const column of input_columns) {
+                    const cell = document.createElement("td");
+                    cell.textContent = input_values[column][row_number];
+                    row.appendChild(cell);
+                }
+
+                for (const column of output_columns) {
+                    const cell = document.createElement("td");
+                    const input = document.createElement("input");
+
+                    input.type = "text";
+                    input.value = initial_output_values[column]?.[row_number] ?? "";
+
+                    cell.appendChild(input);
+                    row.appendChild(cell);
+                }
+
+                body.appendChild(row);
+            }
+
+            table.appendChild(body);
+
+            document.getElementById("go").onclick = async () => {
+                const new_output_values = Object.fromEntries(output_columns.map(column => [column, []]));
+
+                for (const row of body.rows) {
+                    const inputs = row.querySelectorAll("input");
+
+                    inputs.forEach((input, column_number) => {
+                        new_output_values[output_columns[column_number]].push(input.value);
+                    });
+                }
+
+                await fetch("/submit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(new_output_values),
+                });
+
+                document.getElementById("status").textContent = " Saved";
+            };
+        }
+
+        main();
+    </script>
+</body>
+</html>
